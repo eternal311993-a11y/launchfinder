@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Your Launch Pack — LaunchFinder</title>
+  <meta name="description" content="Your paid LaunchFinder brand launch pack.">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="pack-page">
+    <header>
+      <a class="logo" href="/">LaunchFinder<span>AI</span></a>
+    </header>
+
+    <section class="pack-shell">
+      <div id="packLoading" class="pack-loading">
+        <div class="spinner" aria-hidden="true"></div>
+        <h1>Building your Launch Pack…</h1>
+        <p class="muted">Payment confirmed. We’re turning your selected name into a complete launch direction.</p>
+      </div>
+
+      <div id="packError" class="pack-error hidden">
+        <h1>We couldn’t finish the pack yet.</h1>
+        <p id="packErrorText" class="muted">Please retry.</p>
+        <button id="retryPack" type="button">Retry delivery</button>
+      </div>
+
+      <article id="packResult" class="pack-result hidden">
+        <div class="section-kicker">Paid Launch Pack</div>
+        <h1 id="selectedName"></h1>
+        <p class="muted">Your automatically generated launch direction. Save or print this page for reference.</p>
+
+        <div class="pack-toolbar">
+          <button id="copyPack" type="button">Copy full pack</button>
+          <button id="printPack" type="button" class="copy">Print / Save PDF</button>
+          <a class="buy" href="/">Generate another free batch</a>
+        </div>
+
+        <div class="pack-grid">
+          <section class="pack-section">
+            <h2>Positioning</h2>
+            <p id="positioning"></p>
+          </section>
+          <section class="pack-section">
+            <h2>Ideal customer</h2>
+            <p id="idealCustomer"></p>
+          </section>
+        </div>
+
+        <section class="pack-section">
+          <h2>Brand voice</h2>
+          <ul id="brandVoice"></ul>
+        </section>
+
+        <section class="pack-section">
+          <h2>12 taglines</h2>
+          <ul id="taglines"></ul>
+        </section>
+
+        <section class="pack-section">
+          <h2>50 additional name directions</h2>
+          <ul id="alternateNames"></ul>
+        </section>
+
+        <section class="pack-section">
+          <h2>Domain ideas</h2>
+          <p class="muted">Ideas only. Verify availability and pricing with a registrar before purchasing.</p>
+          <ul id="domainIdeas"></ul>
+        </section>
+
+        <div class="pack-grid">
+          <section class="pack-section">
+            <h2>One-line description</h2>
+            <p id="shortDescription"></p>
+          </section>
+          <section class="pack-section">
+            <h2>Social bio</h2>
+            <p id="socialBio"></p>
+          </section>
+        </div>
+
+        <section class="pack-section">
+          <h2>About description</h2>
+          <p id="aboutDescription"></p>
+        </section>
+
+        <section class="pack-section">
+          <h2>Launch checklist</h2>
+          <ol id="launchChecklist"></ol>
+        </section>
+
+        <p class="paid-note">Generated names and domains are ideas only. Check trademarks, local business-name requirements, and domain availability before use.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="/launch-pack.js"></script>
+</body>
+</html>

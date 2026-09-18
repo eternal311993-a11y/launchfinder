@@ -29,6 +29,13 @@ const stripe = process.env.STRIPE_SECRET_KEY
 const LAUNCH_PACK_PRICE_CENTS = 499;
 const LAUNCH_PACK_PRODUCT = "launch_pack_v1";
 
+function stripeMode() {
+  const key = String(process.env.STRIPE_SECRET_KEY || "");
+  if (key.startsWith("sk_live_")) return "live";
+  if (key.startsWith("sk_test_")) return "test";
+  return "off";
+}
+
 const CATEGORY_PAGES = {
   "pressure-washing": { title: "Pressure Washing", description: "Generate memorable pressure washing business names and domain ideas for residential, commercial, and mobile exterior-cleaning brands." },
   landscaping: { title: "Landscaping", description: "Generate landscaping business names and domain ideas for lawn, garden, hardscape, and property-care companies." },
@@ -87,6 +94,7 @@ app.get("/api/health", (_, res) => {
     service: "LaunchFinder",
     aiConfigured: Boolean(client),
     paymentsConfigured: Boolean(stripe),
+    paymentMode: stripeMode(),
     affiliateDomainConfigured: Boolean(process.env.DOMAIN_AFFILIATE_URL_TEMPLATE)
   });
 });
@@ -97,7 +105,8 @@ app.get("/api/config", (_, res) => {
     hostingOffer: Boolean(process.env.HOSTING_AFFILIATE_URL),
     affiliateDisclosure: Boolean(process.env.DOMAIN_AFFILIATE_URL_TEMPLATE || process.env.HOSTING_AFFILIATE_URL),
     launchPackEnabled: Boolean(client && stripe),
-    launchPackPrice: "$4.99"
+    launchPackPrice: "$4.99",
+    paymentMode: stripeMode()
   });
 });
 
@@ -618,6 +627,7 @@ app.listen(port, () => {
   console.log(JSON.stringify({
     event: "startup_config",
     aiConfigured: Boolean(process.env.OPENAI_API_KEY),
-    paymentsConfigured: Boolean(process.env.STRIPE_SECRET_KEY)
+    paymentsConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    paymentMode: stripeMode()
   }));
 });

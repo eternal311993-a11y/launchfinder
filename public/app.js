@@ -12,6 +12,7 @@ const buyPack = document.querySelector("#buyPack");
 const packStatus = document.querySelector("#packStatus");
 
 let launchPackEnabled = false;
+let paymentMode = "off";
 let latestNames = [];
 
 loadConfig();
@@ -124,10 +125,12 @@ async function loadConfig() {
     const config = await response.json();
 
     launchPackEnabled = Boolean(config.launchPackEnabled);
+    paymentMode = String(config.paymentMode || "off");
 
     if (config.hostingOffer) hostingOffer?.classList.remove("hidden");
     if (config.affiliateDisclosure) affiliateNote?.classList.remove("hidden");
 
+    applyPaymentMode();
     renderLaunchPackOffer();
   } catch {}
 }
@@ -181,4 +184,15 @@ function setPackStatus(text, isError = false) {
   if (!packStatus) return;
   packStatus.textContent = text;
   packStatus.classList.toggle("error", isError);
+}
+
+function applyPaymentMode() {
+  const badges = document.querySelectorAll(".pack-badge");
+  if (paymentMode === "test") {
+    for (const badge of badges) badge.textContent = "Sandbox test · no real charge";
+    if (buyPack) buyPack.textContent = "Test Launch Pack — $4.99";
+  } else if (paymentMode === "live") {
+    for (const badge of badges) badge.textContent = "Launch Pack · $4.99 one time";
+    if (buyPack) buyPack.textContent = "Get my Launch Pack — $4.99";
+  }
 }

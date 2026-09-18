@@ -1,1 +1,96 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LaunchFinder — Find your business name & domain</title><meta name="description" content="Turn a business idea into brandable names and domain suggestions in seconds."><link rel="stylesheet" href="/style.css"></head><body><header><a class="logo" href="/">LaunchFinder<span>AI</span></a><nav><a href="#how">How it works</a></nav></header><main><section class="hero"><div class="pill">AI-powered business launch assistant</div><h1>Your business idea deserves a <em>name that sells.</em></h1><p class="sub">Describe what you're building. LaunchFinder creates brandable names and domain ideas so you can move from idea to launch.</p><form id="form"><textarea id="idea" maxlength="500" placeholder="Example: A mobile pressure washing company serving homeowners in Mississippi" required></textarea><button>Find my brand →</button></form><p class="fine">Free to try • No account required</p></section><section id="results" class="results hidden"><h2>Your launch ideas</h2><p>Domain suggestions are ideas only. Verify availability before purchasing.</p><div id="cards"></div></section><section id="how" class="how"><h2>From idea to launch in minutes</h2><div class="steps"><article><b>01</b><h3>Describe it</h3><p>Tell us what kind of business you're starting.</p></article><article><b>02</b><h3>Generate</h3><p>Get short, memorable brand and domain ideas.</p></article><article><b>03</b><h3>Launch</h3><p>Check the domain with a registrar and secure the one you want.</p></article></div></section></main><footer>LaunchFinder AI · Domain availability must be verified with the registrar.</footer><script src="/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LaunchFinder — AI Business Name & Domain Idea Generator</title>
+  <meta name="description" content="Turn a business idea into 12 brandable business names and matching .com domain ideas in seconds. Free to try, no account required.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:title" content="LaunchFinder — Find your business name & domain">
+  <meta property="og:description" content="Describe your business. Get brandable names and matching domain ideas in seconds.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <a class="logo" href="/">LaunchFinder<span>AI</span></a>
+    <nav><a href="#how">How it works</a><a href="#faq">FAQ</a></nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="pill">AI-powered business launch assistant</div>
+      <h1>Turn an idea into a <em>brand you can launch.</em></h1>
+      <p class="sub">Describe the business you want to start. LaunchFinder generates 12 short brand names and matching .com ideas, then lets you check each domain with a registrar.</p>
+
+      <form id="form">
+        <textarea id="idea" maxlength="500" placeholder="Example: A mobile pressure washing company serving homeowners in Mississippi" required></textarea>
+        <button>Generate 12 names →</button>
+      </form>
+      <div id="formMessage" class="form-message" aria-live="polite"></div>
+      <p class="fine">Free to try • No account required • We never claim a domain is available until you verify it</p>
+
+      <div class="popular">
+        <span>Popular:</span>
+        <a href="/business-name-ideas/pressure-washing">Pressure washing</a>
+        <a href="/business-name-ideas/landscaping">Landscaping</a>
+        <a href="/business-name-ideas/trucking">Trucking</a>
+        <a href="/business-name-ideas/cleaning">Cleaning</a>
+        <a href="/business-name-ideas/mobile-detailing">Mobile detailing</a>
+      </div>
+    </section>
+
+    <section id="results" class="results hidden">
+      <div class="section-kicker">Generated for you</div>
+      <h2>Your launch ideas</h2>
+      <p>Pick a direction, copy the name, or check the matching domain.</p>
+      <div id="cards"></div>
+      <div id="affiliateNote" class="affiliate-note hidden">Some outbound links may be affiliate links. If you buy through one, LaunchFinder may earn a commission at no extra cost to you.</div>
+    </section>
+
+    <section class="value-grid">
+      <article><div class="mini-icon">01</div><h3>Names people can repeat</h3><p>LaunchFinder favors short, easy-to-spell ideas instead of long keyword-stuffed names.</p></article>
+      <article><div class="mini-icon">02</div><h3>Matching domain direction</h3><p>Every name comes with a .com idea you can verify directly with a registrar.</p></article>
+      <article><div class="mini-icon">03</div><h3>Start without an account</h3><p>There is no signup wall between your idea and the first batch of launch options.</p></article>
+    </section>
+
+    <section id="hostingOffer" class="offer hidden">
+      <div><div class="section-kicker">Next step</div><h2>Once your domain is secured, put the business online.</h2><p>Open our recommended hosting option in a new tab when you are ready to build the site.</p></div>
+      <a class="primary-link" href="/go/hosting" target="_blank" rel="noopener sponsored">View hosting option →</a>
+    </section>
+
+    <section id="how" class="how">
+      <div class="section-kicker">Simple on purpose</div>
+      <h2>From idea to launch direction in minutes</h2>
+      <div class="steps">
+        <article><b>01</b><h3>Describe it</h3><p>Tell us the business, customer, style, or specialty you have in mind.</p></article>
+        <article><b>02</b><h3>Generate</h3><p>Get 12 names and matching .com domain ideas in one pass.</p></article>
+        <article><b>03</b><h3>Verify</h3><p>Open the registrar to confirm availability and current pricing before buying.</p></article>
+      </div>
+    </section>
+
+    <section class="categories">
+      <div class="section-kicker">Browse by business type</div>
+      <h2>Business name ideas for popular categories</h2>
+      <div class="category-links">
+        <a href="/business-name-ideas/lawn-care">Lawn care</a><a href="/business-name-ideas/roofing">Roofing</a><a href="/business-name-ideas/plumbing">Plumbing</a><a href="/business-name-ideas/hvac">HVAC</a><a href="/business-name-ideas/electrical">Electrical</a><a href="/business-name-ideas/construction">Construction</a><a href="/business-name-ideas/junk-removal">Junk removal</a><a href="/business-name-ideas/towing">Towing</a><a href="/business-name-ideas/photography">Photography</a><a href="/business-name-ideas/barber">Barber</a><a href="/business-name-ideas/salon">Salon</a><a href="/business-name-ideas/bakery">Bakery</a><a href="/business-name-ideas/food-truck">Food truck</a><a href="/business-name-ideas/coffee-shop">Coffee shop</a><a href="/business-name-ideas/dog-grooming">Dog grooming</a><a href="/business-name-ideas/real-estate">Real estate</a><a href="/business-name-ideas/ecommerce">Ecommerce</a><a href="/business-name-ideas/consulting">Consulting</a><a href="/business-name-ideas/home-services">Home services</a>
+      </div>
+    </section>
+
+    <section id="faq" class="faq">
+      <div class="section-kicker">FAQ</div>
+      <h2>Before you choose a name</h2>
+      <details><summary>Does LaunchFinder guarantee the domain is available?</summary><p>No. The domain text is a suggestion. Availability and pricing can change, so the registrar is the source of truth.</p></details>
+      <details><summary>Does a generated name mean I can legally use it?</summary><p>No. Generated names can still conflict with trademarks or existing businesses. Search relevant business and trademark records before committing.</p></details>
+      <details><summary>How do I get better name ideas?</summary><p>Include your target customer, location if it matters, specialty, desired tone, or what makes the business different.</p></details>
+      <details><summary>Is it free?</summary><p>LaunchFinder is free to try. Some outbound recommendations may use affiliate links, which can support the site without changing your purchase price.</p></details>
+    </section>
+  </main>
+
+  <footer>
+    <div>LaunchFinder AI · Domain suggestions are ideas, not availability claims.</div>
+    <div class="footer-links"><a href="/affiliate-disclosure.html">Affiliate disclosure</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div>
+  </footer>
+  <script src="/app.js"></script>
+</body>
+</html>

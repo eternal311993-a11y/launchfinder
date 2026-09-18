@@ -31,8 +31,8 @@ const LAUNCH_PACK_PRODUCT = "launch_pack_v1";
 
 function stripeMode() {
   const key = String(process.env.STRIPE_SECRET_KEY || "");
-  if (key.startsWith("sk_live_")) return "live";
-  if (key.startsWith("sk_test_")) return "test";
+  if (key.startsWith("sk_live_") || key.startsWith("rk_live_")) return "live";
+  if (key.startsWith("sk_test_") || key.startsWith("rk_test_")) return "test";
   return "off";
 }
 

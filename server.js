@@ -613,4 +613,11 @@ function escapeXml(value) {
 }
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log("LaunchFinder running on " + port));
+app.listen(port, () => {
+  console.log("LaunchFinder running on " + port);
+  console.log(JSON.stringify({
+    event: "startup_config",
+    aiConfigured: Boolean(process.env.OPENAI_API_KEY),
+    paymentsConfigured: Boolean(process.env.STRIPE_SECRET_KEY)
+  }));
+});

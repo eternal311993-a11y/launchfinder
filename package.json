@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js && node --check public/launch-pack.js",
+    "postinstall": "npm run check"
   },
   "engines": {
     "node": ">=20"

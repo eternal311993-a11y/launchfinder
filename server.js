@@ -1,5 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
+import Stripe from "stripe";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -20,6 +21,13 @@ app.use((req, res, next) => {
 const client = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null;
+
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
+
+const LAUNCH_PACK_PRICE_CENTS = 499;
+const LAUNCH_PACK_PRODUCT = "launch_pack_v1";
 
 const CATEGORY_PAGES = {
   "pressure-washing": { title: "Pressure Washing", description: "Generate memorable pressure washing business names and domain ideas for residential, commercial, and mobile exterior-cleaning brands." },
@@ -49,16 +57,25 @@ const CATEGORY_PAGES = {
 };
 
 const cache = new Map();
+const launchPackCache = new Map();
+const launchPackJobs = new Map();
 const rateBuckets = new Map();
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const PACK_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = Number(process.env.GENERATE_RATE_LIMIT || 20);
 
 setInterval(() => {
   const now = Date.now();
+
   for (const [key, value] of cache) {
     if (now - value.createdAt > CACHE_TTL_MS) cache.delete(key);
   }
+
+  for (const [key, value] of launchPackCache) {
+    if (now - value.createdAt > PACK_CACHE_TTL_MS) launchPackCache.delete(key);
+  }
+
   for (const [key, value] of rateBuckets) {
     if (now - value.startedAt > RATE_WINDOW_MS) rateBuckets.delete(key);
   }
@@ -69,6 +86,7 @@ app.get("/api/health", (_, res) => {
     ok: true,
     service: "LaunchFinder",
     aiConfigured: Boolean(client),
+    paymentsConfigured: Boolean(stripe),
     affiliateDomainConfigured: Boolean(process.env.DOMAIN_AFFILIATE_URL_TEMPLATE)
   });
 });
@@ -77,17 +95,19 @@ app.get("/api/config", (_, res) => {
   res.json({
     aiEnabled: Boolean(client),
     hostingOffer: Boolean(process.env.HOSTING_AFFILIATE_URL),
-    affiliateDisclosure: Boolean(process.env.DOMAIN_AFFILIATE_URL_TEMPLATE || process.env.HOSTING_AFFILIATE_URL)
+    affiliateDisclosure: Boolean(process.env.DOMAIN_AFFILIATE_URL_TEMPLATE || process.env.HOSTING_AFFILIATE_URL),
+    launchPackEnabled: Boolean(client && stripe),
+    launchPackPrice: "$4.99"
   });
 });
 
 app.post("/api/generate", async (req, res) => {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
-  if (!consumeRateLimit(ip)) {
+  const ip = requestIp(req);
+  if (!consumeRateLimit("generate:" + ip, RATE_MAX)) {
     return res.status(429).json({ error: "Too many requests. Try again in a few minutes." });
   }
 
-  const idea = String(req.body?.idea || "").replace(/\s+/g, " ").trim().slice(0, 500);
+  const idea = cleanIdea(req.body?.idea);
   if (idea.length < 3) {
     return res.status(400).json({ error: "Tell us a little more about the business you are starting." });
   }
@@ -100,6 +120,7 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     let names;
+
     if (client) {
       const response = await client.responses.create({
         model: process.env.OPENAI_MODEL || "gpt-5-mini",
@@ -130,6 +151,128 @@ app.post("/api/generate", async (req, res) => {
     console.error(JSON.stringify({ event: "generation_error", message: error?.message || "unknown" }));
     const result = fallbackNames(idea).map((name) => ({ name, domain: toDomain(name) }));
     res.json({ names: result, fallback: true });
+  }
+});
+
+app.post("/api/checkout", async (req, res) => {
+  if (!stripe || !client) {
+    return res.status(503).json({ error: "Launch Pack checkout is not available yet." });
+  }
+
+  const ip = requestIp(req);
+  if (!consumeRateLimit("checkout:" + ip, 10)) {
+    return res.status(429).json({ error: "Too many checkout attempts. Try again in a few minutes." });
+  }
+
+  const idea = cleanIdea(req.body?.idea);
+  const brandName = cleanName(req.body?.brandName);
+
+  if (idea.length < 3 || !brandName) {
+    return res.status(400).json({ error: "Choose a generated name before continuing." });
+  }
+
+  try {
+    const origin = getOrigin(req);
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: LAUNCH_PACK_PRICE_CENTS,
+            product_data: {
+              name: "LaunchFinder Launch Pack",
+              description: "50 extra names, taglines, positioning, brand direction, domain ideas, and a launch checklist."
+            }
+          }
+        }
+      ],
+      metadata: {
+        product: LAUNCH_PACK_PRODUCT,
+        idea,
+        brand_name: brandName
+      },
+      success_url: origin + "/launch-pack.html?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: origin + "/?checkout=cancelled",
+      submit_type: "pay"
+    });
+
+    if (!session.url) throw new Error("Stripe did not return a checkout URL.");
+
+    console.log(JSON.stringify({
+      event: "launch_pack_checkout_created",
+      sessionId: session.id,
+      at: new Date().toISOString()
+    }));
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error(JSON.stringify({
+      event: "checkout_error",
+      message: error?.message || "unknown"
+    }));
+    res.status(500).json({ error: "Could not start checkout. Please try again." });
+  }
+});
+
+app.get("/api/launch-pack", async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  if (!stripe || !client) {
+    return res.status(503).json({ error: "Launch Pack delivery is not configured." });
+  }
+
+  const sessionId = String(req.query.session_id || "").trim();
+  if (!/^cs_(test_|live_)?[A-Za-z0-9_]+$/.test(sessionId) || sessionId.length > 255) {
+    return res.status(400).json({ error: "Invalid checkout session." });
+  }
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (
+      session.payment_status !== "paid" ||
+      session.amount_total !== LAUNCH_PACK_PRICE_CENTS ||
+      session.currency !== "usd" ||
+      session.metadata?.product !== LAUNCH_PACK_PRODUCT
+    ) {
+      return res.status(402).json({ error: "Payment has not been confirmed." });
+    }
+
+    const cached = launchPackCache.get(sessionId);
+    if (cached && Date.now() - cached.createdAt < PACK_CACHE_TTL_MS) {
+      return res.json({ pack: cached.pack, cached: true });
+    }
+
+    let job = launchPackJobs.get(sessionId);
+    if (!job) {
+      job = generateLaunchPack(
+        cleanIdea(session.metadata?.idea),
+        cleanName(session.metadata?.brand_name)
+      );
+      launchPackJobs.set(sessionId, job);
+    }
+
+    const pack = await job;
+    launchPackJobs.delete(sessionId);
+    launchPackCache.set(sessionId, { createdAt: Date.now(), pack });
+
+    console.log(JSON.stringify({
+      event: "launch_pack_delivered",
+      sessionId,
+      at: new Date().toISOString()
+    }));
+
+    res.json({ pack, cached: false });
+  } catch (error) {
+    launchPackJobs.delete(sessionId);
+    console.error(JSON.stringify({
+      event: "launch_pack_error",
+      sessionId,
+      message: error?.message || "unknown"
+    }));
+    res.status(500).json({ error: "Your payment is safe, but the pack could not be generated right now. Please retry this page." });
   }
 });
 
@@ -205,7 +348,91 @@ app.use((_, res) => {
   );
 });
 
-function consumeRateLimit(key) {
+async function generateLaunchPack(idea, brandName) {
+  if (!idea || !brandName) throw new Error("Missing paid pack metadata.");
+
+  const prompt =
+    "Create a practical launch pack for this business idea: " + idea + "\n" +
+    "The customer selected this brand name: " + brandName + "\n\n" +
+    "Return ONLY valid JSON matching this exact structure:\n" +
+    "{\n" +
+    '  "selectedName": "string",\n' +
+    '  "positioning": "2-3 sentence positioning statement",\n' +
+    '  "idealCustomer": "2-3 sentence target customer description",\n' +
+    '  "brandVoice": ["4 short traits"],\n' +
+    '  "taglines": ["12 distinct taglines"],\n' +
+    '  "alternateNames": ["50 additional short brandable names"],\n' +
+    '  "domainIdeas": ["15 plausible .com domain ideas; do not claim availability"],\n' +
+    '  "shortDescription": "one-sentence business description",\n' +
+    '  "aboutDescription": "80-120 word business/about description",\n' +
+    '  "socialBio": "social profile bio under 160 characters",\n' +
+    '  "launchChecklist": ["10 concrete launch steps in sensible order"]\n' +
+    "}\n\n" +
+    "Make the result specific to the business. Avoid legal, trademark, or domain-availability claims. " +
+    "Do not repeat the selected brand name inside alternateNames. Keep alternate names easy to spell and useful by word of mouth.";
+
+  const response = await client.responses.create({
+    model: process.env.OPENAI_MODEL || "gpt-5-mini",
+    input: prompt
+  });
+
+  const parsed = parseJsonObject(response.output_text);
+  return normalizeLaunchPack(parsed, brandName);
+}
+
+function normalizeLaunchPack(value, brandName) {
+  const pack = value && typeof value === "object" ? value : {};
+  const list = (input, max) =>
+    Array.isArray(input)
+      ? input.map((item) => String(item || "").trim()).filter(Boolean).slice(0, max)
+      : [];
+
+  const normalized = {
+    selectedName: cleanName(pack.selectedName) || brandName,
+    positioning: cleanText(pack.positioning, 800),
+    idealCustomer: cleanText(pack.idealCustomer, 800),
+    brandVoice: list(pack.brandVoice, 6),
+    taglines: list(pack.taglines, 12),
+    alternateNames: list(pack.alternateNames, 50).map(cleanName).filter(Boolean),
+    domainIdeas: list(pack.domainIdeas, 15).map((d) => d.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")).filter(Boolean),
+    shortDescription: cleanText(pack.shortDescription, 400),
+    aboutDescription: cleanText(pack.aboutDescription, 1800),
+    socialBio: cleanText(pack.socialBio, 220),
+    launchChecklist: list(pack.launchChecklist, 12)
+  };
+
+  if (
+    !normalized.positioning ||
+    normalized.taglines.length < 6 ||
+    normalized.alternateNames.length < 25 ||
+    normalized.launchChecklist.length < 6
+  ) {
+    throw new Error("AI returned an incomplete launch pack.");
+  }
+
+  return normalized;
+}
+
+function parseJsonObject(text) {
+  const raw = String(text || "")
+    .trim()
+    .replace(/^\x60{3}(?:json)?/i, "")
+    .replace(/\x60{3}$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(raw.slice(start, end + 1));
+    }
+    throw new Error("AI response was not valid JSON.");
+  }
+}
+
+function consumeRateLimit(key, max) {
   const now = Date.now();
   const current = rateBuckets.get(key);
 
@@ -214,9 +441,21 @@ function consumeRateLimit(key) {
     return true;
   }
 
-  if (current.count >= RATE_MAX) return false;
+  if (current.count >= max) return false;
   current.count += 1;
   return true;
+}
+
+function requestIp(req) {
+  return req.ip || req.socket.remoteAddress || "unknown";
+}
+
+function cleanIdea(value) {
+  return String(value || "").replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function cleanText(value, max) {
+  return String(value || "").replace(/[\r\t]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
 function parseNames(text) {
@@ -338,7 +577,7 @@ function renderCategoryPage(req, slug, page) {
     '<div id="formMessage" class="form-message" aria-live="polite"></div>',
     '<p class="fine">Free to try • No account required • Domain availability is verified by the registrar</p>',
     '</section>',
-    '<section id="results" class="results hidden"><div class="section-kicker">Generated for you</div><h2>Your launch ideas</h2><p>Choose a direction, then check the matching .com with the registrar.</p><div id="cards"></div><div id="affiliateNote" class="affiliate-note hidden">Some outbound links may be affiliate links. If you buy through one, LaunchFinder may earn a commission at no extra cost to you.</div></section>',
+    '<section id="results" class="results hidden"><div class="section-kicker">Generated for you</div><h2>Your launch ideas</h2><p>Choose a direction, then check the matching .com with the registrar.</p><div id="cards"></div><div id="launchPackUpsell" class="launch-pack hidden"><div><div class="pack-badge">Launch Pack · $4.99 one time</div><h3>Turn one name into a launch-ready brand.</h3><p>Get 50 more names, 12 taglines, positioning, customer profile, domain ideas, descriptions, social bio, and a launch checklist.</p><label for="packName">Build the pack around</label><select id="packName"></select></div><button id="buyPack" type="button">Get my Launch Pack — $4.99</button></div><div id="affiliateNote" class="affiliate-note hidden">Some outbound links may be affiliate links. If you buy through one, LaunchFinder may earn a commission at no extra cost to you.</div></section>',
     '<section class="content-panel"><h2>What makes a useful ' + escapeHtml(page.title.toLowerCase()) + ' business name?</h2><p>Favor names people can spell after hearing once, that still make sense if your services expand, and that are distinct enough to search for online. Before committing, check the domain and search for possible trademark conflicts.</p><a class="text-link" href="/">Explore all business name ideas →</a></section>',
     '</main>',
     footerHtml(),
